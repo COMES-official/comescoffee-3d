@@ -1,0 +1,950 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>comes 커피</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* 전면 3D 공간. 화면 위에는 나무 라벨 같은 작은 판만 띄운다. */
+:root{
+  color-scheme:dark;
+  --ink:#f3ecdf; --muted:#b9b1a2; --panel:rgba(24,20,16,.74); --line:rgba(243,236,223,.16);
+  --brass:#d9a95f; --leaf:#8fae72; --ground:#14110d;
+  --display:"Gowun Batang","Noto Serif KR",serif;
+  --body:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0;overflow:hidden;background:var(--ground);color:var(--ink);font-family:var(--body)}
+#stage{position:fixed;inset:0;touch-action:none;cursor:grab}
+#stage:active{cursor:grabbing}
+#stage canvas{display:block;width:100%;height:100%}
+button{font:inherit;color:inherit}
+button:focus-visible,input:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+.hud{position:fixed;z-index:5;display:flex;gap:8px;align-items:center}
+#brand{top:max(14px,env(safe-area-inset-top,0px));left:max(16px,env(safe-area-inset-left,0px));font-family:var(--display);font-size:20px;font-weight:700;text-shadow:0 1px 8px #0009}
+#tools{top:max(12px,env(safe-area-inset-top,0px));right:max(16px,env(safe-area-inset-right,0px));flex-wrap:wrap;justify-content:flex-end;max-width:calc(100vw - 130px)}
+.chip{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:7px 12px;font-size:13px;backdrop-filter:blur(8px);cursor:pointer;white-space:nowrap}
+.chip[aria-pressed="true"]{border-color:var(--brass);color:var(--brass)}
+#people{cursor:default;font-variant-numeric:tabular-nums}
+#hint{position:fixed;z-index:4;top:calc(max(14px,env(safe-area-inset-top,0px)) + 54px);left:50%;transform:translateX(-50%);width:min(520px,calc(100vw - 32px));text-align:center;font-size:14px;line-height:1.5;text-shadow:0 1px 6px #000c}
+#dock{position:fixed;z-index:5;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);display:flex;gap:10px;justify-content:center;flex-wrap:wrap;padding-inline:16px}
+.act{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:12px 20px;font-size:15px;font-weight:500;cursor:pointer;backdrop-filter:blur(8px)}
+.act.main{background:var(--brass);border-color:var(--brass);color:#21170b;font-weight:600}
+#card{position:fixed;z-index:5;left:max(16px,env(safe-area-inset-left,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 84px);width:min(310px,calc(100vw - 32px));background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;backdrop-filter:blur(10px)}
+#cardStep{font-size:12px;color:var(--brass);letter-spacing:.04em}
+#cardName{font-family:var(--display);font-size:22px;margin:3px 0 4px}
+#cardText{font-size:14px;line-height:1.55;color:var(--muted);min-height:3.1em}
+#readout{display:flex;justify-content:space-between;margin-top:10px;padding-top:9px;border-top:1px solid var(--line);font-family:var(--mono);font-size:21px;font-variant-numeric:tabular-nums}
+#readout small{display:block;font-family:var(--body);font-size:11px;color:var(--muted);font-weight:400}
+.sheet{position:fixed;z-index:6;left:50%;top:50%;transform:translate(-50%,-50%);width:min(430px,calc(100vw - 32px));max-height:calc(100% - 40px);overflow:auto;box-sizing:border-box;background:rgba(24,20,16,.9);border:1px solid var(--line);border-radius:12px;padding:20px}
+.sheet h2{font-family:var(--display);font-size:24px;margin:0 0 4px;text-wrap:balance}
+.sheet p{margin:0 0 14px;font-size:14px;line-height:1.55;color:var(--muted)}
+.bean{display:block;width:100%;text-align:left;background:transparent;border:1px solid var(--line);border-radius:8px;padding:11px 13px;margin-bottom:8px;cursor:pointer}
+.bean:hover{border-color:var(--brass)}
+.bean b{display:block;font-size:15px;font-weight:600}
+.bean span{font-size:13px;color:var(--muted)}
+.row{display:grid;grid-template-columns:52px 1fr 20px;gap:10px;align-items:center;margin-bottom:9px;font-size:14px}
+.row input{width:100%;accent-color:var(--brass)}
+.row output{text-align:right;font-family:var(--mono)}
+#intro{position:fixed;inset:0;z-index:10;display:flex;align-items:flex-end;padding:28px max(16px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 34px) max(16px,env(safe-area-inset-left,0px));background:linear-gradient(to top,rgba(12,9,6,.86),rgba(12,9,6,.1) 62%)}
+#intro>div{max-width:590px;margin-inline:auto;width:100%}
+#intro h1{font-family:var(--display);font-size:clamp(42px,9vw,74px);margin:0 0 8px;font-weight:700;letter-spacing:.02em}
+#intro p{font-size:16px;line-height:1.65;margin:0 0 18px;color:#e4dccd;text-wrap:pretty}
+#intro .small{font-size:13px;color:var(--muted);margin:12px 0 0}
+#sheetSet{z-index:7;background:rgba(24,20,16,.98);overflow-anchor:none}
+.setHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.setHead h2{margin:0}
+.x{width:36px;height:36px;border-radius:50%;background:transparent;border:1px solid var(--line);cursor:pointer;font-size:17px;line-height:1}
+.setRow{display:flex;justify-content:space-between;align-items:center;gap:14px}
+.setRow b{display:block;font-size:15px;font-weight:600}
+.setRow span{display:block;font-size:13px;line-height:1.45;color:var(--muted);margin-top:2px}
+.channel{border:1px solid var(--line);border-radius:10px;padding:13px 14px;margin-top:10px}
+#sheetSet[data-off] .channel{opacity:.5}
+.sw{position:relative;flex:none;width:42px;height:24px;padding:0;border:0;border-radius:999px;background:rgba(243,236,223,.2);cursor:pointer}
+.sw::before{content:'';position:absolute;inset:-10px}
+.sw::after{content:'';position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:var(--ink);transition:transform .15s}
+.sw[aria-checked="true"]{background:var(--brass)}
+.sw[aria-checked="true"]::after{transform:translateX(18px);background:#21170b}
+.vol{display:grid;grid-template-columns:1fr 42px;gap:10px;align-items:center;margin-top:10px}
+.vol input{width:100%;accent-color:var(--brass)}
+.vol output{text-align:right;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+#trackList{margin-top:10px}
+.track{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.pick{flex:1;min-width:0;display:flex;align-items:center;gap:9px;min-height:38px;padding:4px 9px;text-align:left;background:transparent;border:1px solid transparent;border-radius:7px;font-size:14px;cursor:pointer}
+.pick i{flex:none;width:8px;height:8px;border-radius:50%;background:rgba(243,236,223,.2)}
+.pick em{font-style:normal;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pick[aria-pressed="true"]{border-color:var(--line);color:var(--brass)}
+.pick[aria-pressed="true"] i{background:var(--brass)}
+.drop{flex:none;width:38px;height:38px;background:transparent;border:0;border-radius:7px;color:var(--muted);font-size:16px;cursor:pointer}
+.drop:hover{color:var(--ink)}
+.addBtn{width:100%;min-height:40px;margin-top:4px;background:transparent;border:1px dashed var(--line);border-radius:7px;font-size:14px;cursor:pointer}
+.addBtn:hover{border-color:var(--brass)}
+#trackMsg{margin:8px 0 0;font-size:12.5px;line-height:1.5}
+#btnMariposa{display:block;margin-top:6px;padding:4px 0;background:none;border:0;font-size:13px;color:var(--brass);cursor:pointer}
+#sheetSet details{margin-top:12px;font-size:14px}
+#sheetSet summary{cursor:pointer;padding:4px 0}
+#sheetSet details p{margin:6px 0 0;font-size:13px}
+#fail{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;text-align:center;padding-block:24px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));background:var(--ground);font-size:16px;line-height:1.6}
+@media (max-width:640px){
+  #card{bottom:auto;top:calc(max(12px,env(safe-area-inset-top,0px)) + 44px);left:50%;transform:translateX(-50%);padding:10px 14px}
+  #cardName{font-size:19px}
+  #cardText{min-height:0;font-size:13px}
+  #readout{font-size:18px}
+  .chip{padding:6px 10px;font-size:12px}
+}
+</style>
+
+<div id="stage" role="img" aria-label="천장이 뚫린 둥근 카페. 가운데 거대한 나무를 둥근 바가 둘러싸고, 자리마다 바리스타가 서 있다."></div>
+<div id="brand" class="hud">comes 커피</div>
+<div id="tools" class="hud">
+  <span id="people" class="chip" aria-live="polite" hidden></span>
+  <button id="btnTime" class="chip" type="button">노을</button>
+  <button id="btnRain" class="chip" type="button" aria-pressed="false">비</button>
+  <button id="btnSound" class="chip" type="button" aria-pressed="true">소리 켜짐</button>
+  <button id="btnSet" class="chip" type="button">설정</button>
+</div>
+<div id="hint" aria-live="polite"></div>
+<div id="dock"></div>
+<section id="card" hidden aria-live="polite">
+  <div id="cardStep"></div>
+  <div id="cardName"></div>
+  <div id="cardText"></div>
+  <div id="readout">
+    <div><small>저울</small><span id="grams">0.0 g</span></div>
+    <div><small>추출 시간</small><span id="clock">0:00</span></div>
+    <div><small>물 온도</small><span id="temp">-</span></div>
+  </div>
+</section>
+<section id="sheetBeans" class="sheet" hidden>
+  <h2>오늘은 어떤 원두로 내릴까요</h2>
+  <p>샘플 메뉴입니다. 15g을 물 225g으로 내립니다.</p>
+  <div id="beanList"></div>
+</section>
+<section id="sheetTaste" class="sheet" hidden>
+  <h2>방금 그 한 잔, 어땠나요</h2>
+  <p id="tasteNote">기록은 이 브라우저에만 남습니다.</p>
+  <div id="tasteRows"></div>
+</section>
+<section id="sheetSet" class="sheet" role="dialog" aria-labelledby="setTitle" hidden>
+  <div class="setHead"><h2 id="setTitle">설정</h2><button id="btnSetClose" class="x" type="button" aria-label="설정 닫기">✕</button></div>
+  <div class="setRow">
+    <div><b>내가 듣는 소리</b><span>이 카페의 소리를 내 취향대로</span></div>
+    <button id="swSound" class="sw" type="button" role="switch" aria-label="내가 듣는 소리"></button>
+  </div>
+  <div class="channel">
+    <div class="setRow">
+      <div><b>음악</b><span>듣고 싶은 곡을 고르세요.</span></div>
+      <button id="swMusic" class="sw" type="button" role="switch" aria-label="음악"></button>
+    </div>
+    <div id="trackList"></div>
+    <button id="btnAddTrack" class="addBtn" type="button">곡 추가</button>
+    <input id="fileTrack" type="file" accept="audio/*,video/mp4,.mp3,.m4a,.mp4,.wav,.ogg,.flac,.aac" multiple hidden>
+    <button id="btnMariposa" type="button" hidden>Mariposa 다시 넣기</button>
+    <p id="trackMsg" aria-live="polite">추가한 곡은 이 브라우저에만 저장되고 서버로 올라가지 않습니다.</p>
+    <label class="vol"><input id="volMusic" type="range" min="0" max="100" aria-label="음악 크기"><output></output></label>
+  </div>
+  <div class="channel">
+    <div><b>공간음</b><span style="display:block;font-size:13px;color:var(--muted);margin-top:2px">나뭇잎, 풍경, 빗소리</span></div>
+    <label class="vol"><input id="volAmb" type="range" min="0" max="100" aria-label="공간음 크기"><output></output></label>
+  </div>
+  <div class="channel">
+    <div><b>브루잉 소리</b><span style="display:block;font-size:13px;color:var(--muted);margin-top:2px">분쇄, 물줄기, 방울</span></div>
+    <label class="vol"><input id="volFx" type="range" min="0" max="100" aria-label="브루잉 소리 크기"><output></output></label>
+  </div>
+  <div class="setRow" style="margin-top:14px">
+    <div><b>백그라운드 재생</b><span id="bgText"></span></div>
+    <button id="swBg" class="sw" type="button" role="switch" aria-label="백그라운드 재생"></button>
+  </div>
+  <details>
+    <summary>조작 방법</summary>
+    <p>바닥을 누르면 걷고, 바 앞 의자를 누르면 앉습니다. 끌어서 둘러보고, 휠로 확대합니다. 키보드는 WASD나 방향키로 걷습니다. 음악 파일을 화면에 끌어다 놓아도 추가됩니다.</p>
+  </details>
+</section>
+<section id="intro">
+  <div>
+    <h1>comes 커피</h1>
+    <p>거대한 나무 아래 둥근 바가 있습니다. 어느 자리에 앉아도 내 앞에는 나만의 바리스타가, 그 뒤에는 나무가 있습니다. 앉아서 한 잔이 내려지는 과정을 지켜보세요.</p>
+    <button id="btnEnter" class="act main" type="button">들어가기</button>
+    <p class="small">가입 없이 바로 들어갑니다. 소리가 나옵니다.</p>
+  </div>
+</section>
+<div id="fail" hidden>이 브라우저에서는 3D 화면을 열 수 없습니다. 다른 브라우저로 열어 주세요.</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+if(!window.THREE){$('fail').hidden=false;return}
+const T=THREE, V3=T.Vector3;
+const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const phone=Math.min(innerWidth,innerHeight)<620;
+
+// 공간 치수 (단위: 미터 비슷하게)
+const BAR_IN=5.9, BAR_OUT=7.3, BAR_H=1.12, SEATS=12, STOOL_R=7.95, ROOM_R=24, CEIL=9, HOLE=4.7;
+
+// ---------- 도우미 ----------
+const clamp=(x,a=0,b=1)=>Math.min(b,Math.max(a,x));
+const smooth=x=>{x=clamp(x);return x*x*(3-2*x)};
+const seg=(p,a,b)=>clamp((p-a)/(b-a));
+const lerp=(a,b,t)=>a+(b-a)*t;
+function rng(seed){return()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const R=rng(20261031);
+const mat=(color,rough=.8,metal=0,extra={})=>new T.MeshStandardMaterial({color,roughness:rough,metalness:metal,...extra});
+function add(parent,geo,material,x=0,y=0,z=0){const m=new T.Mesh(geo,material);m.position.set(x,y,z);parent.add(m);return m}
+function lathe(points,seg=28){return new T.LatheGeometry(points.map(p=>new T.Vector2(p[0],p[1])),seg)}
+function canvasTex(w,h,draw,repeat){
+  const c=document.createElement('canvas');c.width=w;c.height=h;draw(c.getContext('2d'),w,h);
+  const t=new T.CanvasTexture(c);t.colorSpace=T.SRGBColorSpace;t.wrapS=t.wrapT=T.RepeatWrapping;
+  if(repeat)t.repeat.set(repeat[0],repeat[1]);t.anisotropy=4;return t;
+}
+const UP=new V3(0,1,0), tmpV=new V3(), tmpQ=new T.Quaternion(), tmpM=new T.Matrix4(), tmpS=new V3(), tmpA=new V3(), tmpB=new V3();
+function setLine(mesh,a,b){
+  tmpV.subVectors(b,a);const len=tmpV.length()||.001;
+  mesh.position.addVectors(a,b).multiplyScalar(.5);
+  mesh.scale.y=len;mesh.quaternion.setFromUnitVectors(UP,tmpV.normalize());
+}
+
+// ---------- 질감 ----------
+const texWood=canvasTex(512,256,(g,w,h)=>{
+  g.fillStyle='#7a4f2c';g.fillRect(0,0,w,h);const r=rng(5);
+  for(let i=0;i<260;i++){g.strokeStyle=`rgba(${r()<.5?'40,22,10':'160,110,66'},${.05+r()*.14})`;g.lineWidth=.5+r()*2;g.beginPath();const y=r()*h;g.moveTo(0,y);
+    g.bezierCurveTo(w*.3,y+r()*12-6,w*.6,y+r()*12-6,w,y+r()*6-3);g.stroke()}
+},[10,1]);
+const texFloor=canvasTex(512,512,(g,w,h)=>{
+  g.fillStyle='#8c8476';g.fillRect(0,0,w,h);const r=rng(9);
+  for(let i=0;i<5200;i++){g.fillStyle=`rgba(${r()<.5?'50,44,38':'205,196,180'},${.05+r()*.22})`;const s=.6+r()*3;g.fillRect(r()*w,r()*h,s,s)}
+},[9,9]);
+const texBark=canvasTex(256,512,(g,w,h)=>{
+  g.fillStyle='#4b3726';g.fillRect(0,0,w,h);const r=rng(13);
+  for(let i=0;i<340;i++){g.strokeStyle=`rgba(${r()<.6?'22,14,8':'120,92,66'},${.2+r()*.4})`;g.lineWidth=1+r()*4;g.beginPath();let x=r()*w,y=r()*h;g.moveTo(x,y);for(let k=0;k<5;k++){x+=r()*10-5;y+=8+r()*22;g.lineTo(x,y)}g.stroke()}
+},[3,2]);
+const texSoft=canvasTex(128,128,(g,w,h)=>{
+  const d=g.createRadialGradient(w/2,h/2,0,w/2,h/2,w/2);d.addColorStop(0,'rgba(255,255,255,.9)');d.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=d;g.fillRect(0,0,w,h);
+});
+
+// ---------- 장면 ----------
+const stage=$('stage');
+let renderer;
+try{renderer=new T.WebGLRenderer({antialias:true,powerPreference:'high-performance'})}catch(e){$('fail').hidden=false;return}
+renderer.setPixelRatio(Math.min(devicePixelRatio||1,phone?1.5:1.75));
+renderer.toneMapping=T.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.05;
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=T.PCFSoftShadowMap;
+stage.appendChild(renderer.domElement);
+const scene=new T.Scene();
+scene.fog=new T.Fog(0x2a2a30,34,120);
+const camera=new T.PerspectiveCamera(52,1,.05,260);
+
+// 하늘
+const skyU={top:{value:new T.Color()},low:{value:new T.Color()}};
+scene.add(new T.Mesh(new T.SphereGeometry(200,24,16),new T.ShaderMaterial({side:T.BackSide,depthWrite:false,fog:false,uniforms:skyU,
+  vertexShader:'varying vec3 p;void main(){p=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
+  fragmentShader:'uniform vec3 top,low;varying vec3 p;void main(){float h=clamp(normalize(p).y*1.6+.1,0.,1.);gl_FragColor=vec4(mix(low,top,h),1.);}'})));
+
+const hemi=new T.HemisphereLight(0xffffff,0x4a4236,1);scene.add(hemi);
+const sun=new T.DirectionalLight(0xffffff,2);
+sun.castShadow=true;sun.shadow.mapSize.set(phone?1024:2048,phone?1024:2048);
+Object.assign(sun.shadow.camera,{left:-28,right:28,top:28,bottom:-28,near:5,far:110});sun.shadow.bias=-.0006;
+scene.add(sun,sun.target);
+const lamps=[];
+for(let i=0;i<4;i++){const a=i/4*Math.PI*2+.4,l=new T.PointLight(0xffc98a,18,17,1.7);l.position.set(Math.sin(a)*6.6,3.2,Math.cos(a)*6.6);scene.add(l);lamps.push(l)}
+const barSpot=new T.SpotLight(0xffe2b8,0,6,.34,.6,1.2);scene.add(barSpot,barSpot.target);
+
+// 바닥과 건물
+const matFloor=mat(0xffffff,.82,0,{map:texFloor});
+const floor=add(scene,new T.CircleGeometry(ROOM_R,72),matFloor);floor.rotation.x=-Math.PI/2;floor.receiveShadow=true;
+const ground=add(scene,new T.CircleGeometry(190,48),mat(0x27331f,1),0,-.05,0);ground.rotation.x=-Math.PI/2;
+const glass=add(scene,new T.CylinderGeometry(ROOM_R,ROOM_R,CEIL,72,1,true),new T.MeshStandardMaterial({color:0xbfd5d8,transparent:true,opacity:.1,roughness:.1,side:T.DoubleSide,depthWrite:false}),0,CEIL/2,0);
+const matBeam=mat(0x5d3c22,.65);
+const mull=new T.InstancedMesh(new T.BoxGeometry(.2,CEIL,.3),matBeam,44);
+const beams=new T.InstancedMesh(new T.BoxGeometry(.26,.34,ROOM_R-HOLE),matBeam,24);
+const dummy=new T.Object3D();
+for(let i=0;i<44;i++){const a=i/44*Math.PI*2;dummy.position.set(Math.sin(a)*ROOM_R,CEIL/2,Math.cos(a)*ROOM_R);dummy.rotation.set(0,a,0);dummy.updateMatrix();mull.setMatrixAt(i,dummy.matrix)}
+for(let i=0;i<24;i++){const a=i/24*Math.PI*2,r=(ROOM_R+HOLE)/2;dummy.position.set(Math.sin(a)*r,CEIL-.2,Math.cos(a)*r);dummy.rotation.set(0,a,0);dummy.updateMatrix();beams.setMatrixAt(i,dummy.matrix)}
+scene.add(mull,beams);
+const ceilGeo=new T.RingGeometry(HOLE,ROOM_R+.4,72,1);
+const ceil=add(scene,ceilGeo,mat(0xffffff,.8,0,{map:(()=>{const t=texWood.clone();t.repeat.set(16,3);return t})(),side:T.DoubleSide}),0,CEIL,0);ceil.rotation.x=Math.PI/2;ceil.castShadow=true;ceil.receiveShadow=true;
+add(scene,new T.CylinderGeometry(HOLE,HOLE,.7,64,1,true),mat(0x3f2816,.7,0,{side:T.DoubleSide}),0,CEIL+.32,0);
+add(scene,new T.TorusGeometry(HOLE,.09,10,72),mat(0xc99a55,.35,.7),0,CEIL,0).rotation.x=Math.PI/2;
+const shaft=add(scene,new T.CylinderGeometry(HOLE*.92,3.5,CEIL-.5,40,1,true),new T.MeshBasicMaterial({map:canvasTex(8,128,(g,w,h)=>{const d=g.createLinearGradient(0,0,0,h);d.addColorStop(0,'rgba(255,255,255,.9)');d.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=d;g.fillRect(0,0,w,h)}),transparent:true,opacity:.06,blending:T.AdditiveBlending,depthWrite:false,side:T.DoubleSide,color:0xffe7c2,fog:false}),0,CEIL/2-.2,0);
+
+// 숲 그림자
+const coneN=phone?90:170, cones=new T.InstancedMesh(new T.ConeGeometry(3.4,13,7),mat(0x1f3324,1),coneN);
+for(let i=0;i<coneN;i++){const a=R()*Math.PI*2,r=33+R()*62,s=.7+R()*1.2;dummy.position.set(Math.sin(a)*r,6*s-.2,Math.cos(a)*r);dummy.rotation.set(0,R()*6,0);dummy.scale.set(s,s,s);dummy.updateMatrix();cones.setMatrixAt(i,dummy.matrix)}
+dummy.scale.set(1,1,1);scene.add(cones);
+
+// ---------- 나무 ----------
+const segs=[], tips=[];
+function grow(p,dir,len,rad,depth){
+  const n=depth===0?7:3+(R()*2|0);let q=p.clone(),d=dir.clone();
+  for(let i=0;i<n;i++){
+    const l=len/n,e=q.clone().addScaledVector(d,l),r=rad*(1-.42*i/n),rEnd=rad*(1-.42*(i+1)/n);
+    const rr=Math.hypot(e.x,e.z);
+    if(e.y>CEIL-1.1&&rr>HOLE-.7){e.x*=(HOLE-.7)/rr;e.z*=(HOLE-.7)/rr}
+    else if(rr>7.6){e.x*=7.6/rr;e.z*=7.6/rr}
+    if(e.y<2.7&&depth>0)e.y=2.7;
+    segs.push({a:q.clone(),b:e.clone(),r,rEnd});
+    if(depth>=2)tips.push(e.clone());
+    if(depth<5&&(depth>0?i>=n-2:i>=1)){
+      const k=depth===0?3:2+(R()*1.6|0);
+      for(let j=0;j<k;j++){
+        const az=R()*Math.PI*2,sp=(depth===0?.8:.5)+R()*.45;
+        const nd=d.clone().multiplyScalar(Math.cos(sp)).add(new V3(Math.cos(az),.25,Math.sin(az)).normalize().multiplyScalar(Math.sin(sp))).normalize();
+        grow(e.clone(),nd,len*(depth===0?.5:.72),r*.62,depth+1);
+      }
+    }
+    q=e;d.add(new V3(R()-.5,.05,R()-.5).multiplyScalar(.2)).normalize();
+  }
+}
+grow(new V3(0,-.1,0),new V3(0,1,0),11,1.25,0);
+for(let i=0;i<9;i++){const a=i/9*Math.PI*2+R()*.3,o=new V3(Math.sin(a),0,Math.cos(a));
+  segs.push({a:new V3(0,1.5,0).addScaledVector(o,.5),b:new V3(0,.1,0).addScaledVector(o,2.1+R()*.8),r:.62,rEnd:.16});}
+// 마디마다 끝 굵기를 맞춘 한 덩어리 줄기 (이음매가 보이지 않게)
+const tPos=[],tUv=[],tIdx=[],RING=9;
+segs.forEach(s=>{
+  const dir=new V3().subVectors(s.b,s.a),len=dir.length();dir.normalize();
+  const u=new V3(.3,.2,1).cross(dir).normalize(),v=new V3().crossVectors(dir,u),base=tPos.length/3;
+  [[s.a,s.r*1.03,0],[s.b,s.rEnd*1.03,len]].forEach(([p,r,y])=>{for(let k=0;k<=RING;k++){const t=k/RING*Math.PI*2,c=Math.cos(t)*r,n=Math.sin(t)*r;tPos.push(p.x+u.x*c+v.x*n,p.y+u.y*c+v.y*n,p.z+u.z*c+v.z*n);tUv.push(k/RING,p.y*.22)}});
+  for(let k=0;k<RING;k++){const a=base+k,b=a+1,c=a+RING+1,d=c+1;tIdx.push(a,c,b,b,c,d)}
+});
+const trunkGeo=new T.BufferGeometry();trunkGeo.setAttribute('position',new T.Float32BufferAttribute(tPos,3));trunkGeo.setAttribute('uv',new T.Float32BufferAttribute(tUv,2));trunkGeo.setIndex(tIdx);trunkGeo.computeVertexNormals();
+const trunkMesh=new T.Mesh(trunkGeo,mat(0xffffff,.95,0,{map:texBark,side:T.DoubleSide}));
+trunkMesh.castShadow=true;trunkMesh.receiveShadow=true;scene.add(trunkMesh);
+
+const leafGeo=new T.BufferGeometry();
+leafGeo.setAttribute('position',new T.Float32BufferAttribute([0,0,0,.5,.05,.22,1,0,0,0,0,0,1,0,0,.5,.05,-.22],3));
+leafGeo.setAttribute('normal',new T.Float32BufferAttribute([0,1,0,0,1,0,0,1,0,0,1,0,0,1,0,0,1,0],3));
+const windU={value:0};
+const leafMat=mat(0xffffff,.72,0,{side:T.DoubleSide,emissive:0x2c4020,emissiveIntensity:.8});
+leafMat.onBeforeCompile=sh=>{sh.uniforms.uWind=windU;sh.vertexShader='uniform float uWind;\n'+sh.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
+  float ph=instanceMatrix[3].x*.7+instanceMatrix[3].z*.9+instanceMatrix[3].y*.4;
+  transformed.y+=sin(uWind*1.6+ph)*.14*position.x;transformed.z+=cos(uWind*1.1+ph)*.1*position.x;`)};
+const leafN=phone?5200:11000, leaves=new T.InstancedMesh(leafGeo,leafMat,leafN);
+const col=new T.Color(), palette=[0x4f7a39,0x5f8f3e,0x3f6b34,0x7a9c43,0xa89a3a,0xb9832f];
+// 잎 덩어리: 천장 아래 가지 끝과 뚫린 천장 위쪽에 모은다
+const clumps=[];
+for(let i=0;i<46;i++){const a=R()*6.28,r=2+R()*5,t=tips.filter(p=>p.y<CEIL-.3&&p.y>3)[R()*tips.length%Math.max(1,tips.filter(p=>p.y<CEIL-.3&&p.y>3).length)|0];clumps.push(t&&R()<.5?t.clone():new V3(Math.sin(a)*r,5+R()*3.4,Math.cos(a)*r))}
+for(let i=0;i<26;i++){const a=R()*6.28,r=R()*6;clumps.push(new V3(Math.sin(a)*r,10.2+R()*4.5,Math.cos(a)*r))}
+for(let i=0;i<leafN;i++){
+  const t=clumps[R()*clumps.length|0],gs=()=>(R()+R()+R()-1.5)*1.25;
+  dummy.position.set(t.x+gs(),Math.min(t.y+gs()*.8,t.y<CEIL?CEIL-.25:99),t.z+gs());
+  dummy.rotation.set(R()*6.28,R()*6.28,R()*6.28);const s=.3+R()*.34;dummy.scale.set(s,s,s);dummy.updateMatrix();
+  leaves.setMatrixAt(i,dummy.matrix);col.set(palette[R()<.86?R()*4|0:4+(R()*2|0)]).multiplyScalar(.85+R()*.3);leaves.setColorAt(i,col);
+}
+dummy.scale.set(1,1,1);leaves.castShadow=true;scene.add(leaves);
+
+// 화단
+const planter=add(scene,lathe([[0,.24],[3.3,.24],[3.42,.2],[3.5,0]],64),mat(0x37432a,1),0,0,0);planter.receiveShadow=true;
+add(scene,new T.TorusGeometry(3.45,.11,10,72),mat(0x6e6658,.9),0,.15,0).rotation.x=Math.PI/2;
+
+// 둥근 바
+const matBar=mat(0xffffff,.46,0,{map:texWood});
+const barGeo=lathe([[BAR_IN,0],[BAR_IN,BAR_H-.09],[BAR_IN-.1,BAR_H-.09],[BAR_IN-.1,BAR_H],[BAR_OUT+.1,BAR_H],[BAR_OUT+.14,BAR_H-.04],[BAR_OUT+.1,BAR_H-.09],[BAR_OUT,BAR_H-.09],[BAR_OUT-.1,.12],[BAR_OUT-.06,0]],96);
+const bar=add(scene,barGeo,matBar);bar.castShadow=true;bar.receiveShadow=true;
+add(scene,new T.TorusGeometry(BAR_OUT-.04,.022,8,96),mat(0xc99a55,.3,.8),0,.28,0).rotation.x=Math.PI/2;
+
+// 바 위의 고리 조명
+const lampMat=new T.MeshStandardMaterial({color:0x2a1c10,emissive:0xffc27a,emissiveIntensity:1.6});
+add(scene,new T.TorusGeometry(6.6,.05,8,96),lampMat,0,3.45,0).rotation.x=Math.PI/2;
+for(let i=0;i<12;i++){const a=i/12*Math.PI*2+Math.PI/12;add(scene,new T.CylinderGeometry(.012,.012,CEIL-3.45,5),mat(0x2a221a,.6,.5),Math.sin(a)*6.6,(CEIL+3.45)/2,Math.cos(a)*6.6)}
+
+// 바깥 자리
+const colliders=[];
+const matTable=mat(0x8a6a48,.5), matLeg=mat(0x2c261f,.5,.5);
+for(let i=0;i<10;i++){
+  const a=i/10*Math.PI*2+.31,r=15.2+(i%2)*3.2,x=Math.sin(a)*r,z=Math.cos(a)*r;
+  add(scene,new T.CylinderGeometry(.75,.75,.05,28),matTable,x,.76,z).castShadow=true;
+  add(scene,new T.CylinderGeometry(.05,.09,.74,10),matLeg,x,.37,z);
+  for(let k=0;k<2;k++){const b=a+k*Math.PI+.9;add(scene,new T.CylinderGeometry(.24,.2,.46,14),matTable,x+Math.sin(b)*1.15,.23,z+Math.cos(b)*1.15)}
+  colliders.push({x,z,r:1.05});
+}
+
+// ---------- 사람 ----------
+function makePerson(c){
+  const g=new T.Group(), skin=mat(c.skin,.7), cloth=mat(c.cloth,.75), apron=mat(c.apron,.8), hair=mat(c.hair,.6);
+  const legGeo=new T.CapsuleGeometry(.09,.4,4,10);
+  const legL=add(g,legGeo,mat(c.pants,.8),-.12,.32,0), legR=add(g,legGeo,legL.material,.12,.32,0);
+  const torso=add(g,new T.CapsuleGeometry(.26,.36,6,16),cloth,0,1,0);torso.castShadow=true;
+  if(c.apron!==c.cloth){const ap=add(g,new T.CylinderGeometry(.272,.3,.66,22,1,true,-1,2),apron,0,.92,0);ap.material.side=T.DoubleSide}
+  const headG=new T.Group();headG.position.set(0,1.56,0);g.add(headG);
+  add(headG,new T.SphereGeometry(.25,22,16),skin).castShadow=true;
+  const h=add(headG,new T.SphereGeometry(.27,24,14,0,6.3,0,1.5),hair,0,.012,-.01);h.rotation.x=-.5;
+  const eye=mat(0x241a12,.4);add(headG,new T.SphereGeometry(.022,8,8),eye,-.09,.01,.235);add(headG,new T.SphereGeometry(.022,8,8),eye,.09,.01,.235);
+  const armGeo=new T.CylinderGeometry(.062,.062,1,10), up=[0,1].map(()=>add(g,armGeo,cloth)), lo=[0,1].map(()=>add(g,armGeo,skin)), hd=[0,1].map(()=>add(g,new T.SphereGeometry(.075,10,10),skin));
+  const L=.44, sh=[new V3(.29,1.26,.02),new V3(-.29,1.26,.02)];
+  function arm(i,target){
+    const a=sh[i],dir=tmpA.subVectors(target,a),d=Math.min(dir.length(),L*1.97);dir.normalize();
+    const bend=tmpB.set(i?-.8:.8,-1,-.3).normalize();bend.addScaledVector(dir,-bend.dot(dir)).normalize();
+    const hh=Math.sqrt(Math.max(0,L*L-d*d/4));
+    const elbow=new V3().copy(a).addScaledVector(dir,d/2).addScaledVector(bend,hh), hand=new V3().copy(a).addScaledVector(dir,d);
+    setLine(up[i],a,elbow);setLine(lo[i],elbow,hand);hd[i].position.copy(hand);
+  }
+  return{g,headG,legL,legR,arm,torso};
+}
+
+// ---------- 브루잉 기구 (자리마다 한 벌) ----------
+const M={
+  dripper:new T.MeshStandardMaterial({color:0xdbe8ea,transparent:true,opacity:.5,roughness:.1,metalness:.1,side:T.DoubleSide,depthWrite:false}),
+  paper:new T.MeshStandardMaterial({color:0xf2ece0,transparent:true,opacity:.86,roughness:.9,side:T.DoubleSide}),
+  glass:new T.MeshStandardMaterial({color:0xe9f2f2,transparent:true,opacity:.26,roughness:.08,metalness:.1,side:T.DoubleSide,depthWrite:false}),
+  steel:mat(0xb9b6ae,.3,.85), black:mat(0x24211e,.5,.2), brass:mat(0xc99a55,.32,.8),
+  scale:new T.MeshStandardMaterial({color:0x1b1916,emissive:0x89c28a,emissiveIntensity:.0,roughness:.4}),
+  cup:mat(0xe9e3d6,.42), coffee:mat(0x2a1508,.25), bed:mat(0x4a2c17,.95)
+};
+const G={
+  scale:new T.BoxGeometry(.3,.04,.3),
+  server:lathe([[.05,0],[.1,.01],[.112,.09],[.09,.2],[.095,.22]]),
+  drip:lathe([[.03,0],[.04,.012],[.145,.17],[.15,.175]]),
+  paper:lathe([[.022,.01],[.13,.16],[.138,.19]]),
+  ring:new T.TorusGeometry(.082,.008,8,28),
+  leg:new T.CylinderGeometry(.008,.008,.31,6),
+  kettle:lathe([[0,0],[.11,0],[.115,.02],[.095,.16],[.05,.2],[0,.205]]),
+  spout:new T.TubeGeometry(new T.CatmullRomCurve3([new V3(.08,.03,0),new V3(.17,.04,0),new V3(.2,.12,0),new V3(.26,.21,0)]),14,.011,8),
+  handle:new T.TorusGeometry(.085,.012,8,18,Math.PI*1.25),
+  cup:lathe([[0,0],[.06,0],[.082,.03],[.088,.1],[.085,.105]]),
+  grind:new T.CylinderGeometry(.075,.085,.24,18),
+  hopper:new T.CylinderGeometry(.095,.065,.08,18,1,true),
+  crank:new T.BoxGeometry(.16,.012,.02), knob:new T.SphereGeometry(.018,8,8),
+  tin:new T.CylinderGeometry(.05,.05,.09,16),
+  stool:new T.CylinderGeometry(.27,.24,.07,24), stoolLeg:new T.CylinderGeometry(.035,.05,.76,10), stoolFoot:new T.CylinderGeometry(.22,.24,.03,20),
+  liquid:new T.CylinderGeometry(.086,.086,1,18), cupLiquid:new T.CylinderGeometry(.078,.078,.012,18)
+};
+const stationPalette=[
+ {cloth:0xe7e1d4,apron:0x3d4a35,skin:0xe8bd97,hair:0x2c1e15,pants:0x2d2925},{cloth:0x2f2b28,apron:0x8d5d36,skin:0xd9a981,hair:0x121010,pants:0x2d2925},
+ {cloth:0xd6d9ce,apron:0x5b3e2b,skin:0xf0caa8,hair:0x4a2c1b,pants:0x34302b}];
+const stations=[], stoolHits=[];
+const matStool=mat(0x7b5230,.55), matMetal=mat(0x2c261f,.45,.55);
+for(let i=0;i<SEATS;i++){
+  const st=new T.Group();st.rotation.y=(i+.5)/SEATS*Math.PI*2-Math.PI/SEATS*.5*0;st.updateMatrix();scene.add(st);
+  add(st,G.stool,matStool,0,.8,STOOL_R).castShadow=true;add(st,G.stoolLeg,matMetal,0,.4,STOOL_R);add(st,G.stoolFoot,matMetal,0,.02,STOOL_R);
+  const hit=add(st,new T.CylinderGeometry(.46,.46,1.7,10),new T.MeshBasicMaterial({visible:false}),0,.85,STOOL_R);hit.userData.seat=i;stoolHits.push(hit);
+  const scl=add(st,G.scale,M.black,0,BAR_H+.02,6.35);
+  const server=new T.Group();server.position.set(0,BAR_H+.04,6.35);st.add(server);
+  add(server,G.server,M.glass);
+  const liquid=add(server,G.liquid,M.coffee,0,.012,0);liquid.scale.y=.001;liquid.visible=false;
+  const stand=new T.Group();stand.position.set(0,BAR_H,6.35);st.add(stand);
+  add(stand,G.ring,M.brass,0,.33,0).rotation.x=Math.PI/2;
+  [[.08,0],[-.08,0]].forEach(p=>add(stand,G.leg,M.brass,p[0],.17,p[1]));
+  add(stand,G.drip,M.dripper,0,.33,0);add(stand,G.paper,M.paper,0,.33,0);
+  const bed=add(stand,new T.SphereGeometry(.078,18,12,0,6.3,0,1.57),M.bed,0,.41,0);bed.visible=false;bed.scale.set(1,.5,1);
+  const kettle=new T.Group();kettle.position.set(-.52,BAR_H,6.4);st.add(kettle);
+  add(kettle,G.kettle,M.steel);add(kettle,G.spout,M.steel);add(kettle,G.handle,M.black,-.135,.1,0).rotation.z=2.2;
+  const grinder=new T.Group();grinder.position.set(.52,BAR_H,6.32);st.add(grinder);
+  add(grinder,G.grind,M.steel,0,.12,0);add(grinder,G.hopper,M.glass,0,.27,0);
+  const crank=new T.Group();crank.position.set(0,.33,0);grinder.add(crank);
+  add(crank,G.crank,M.black,.07,0,0);add(crank,G.knob,M.brass,.15,.02,0);
+  const tin=add(st,G.tin,M.brass,.84,BAR_H+.045,6.25);
+  const cup=new T.Group();cup.position.set(.26,BAR_H,6.95);st.add(cup);
+  add(cup,G.cup,M.cup);const cupLiq=add(cup,G.cupLiquid,M.coffee,0,.03,0);cupLiq.visible=false;
+  const p=makePerson(stationPalette[i%3]);p.g.position.set(0,0,5.5);st.add(p.g);
+  p.arm(0,new V3(.32,.64,.12));p.arm(1,new V3(-.32,.64,.12));
+  stations.push({g:st,i,scl,server,liquid,stand,bed,kettle,grinder,crank,tin,cup,cupLiq,p,phase:i*.9,taken:false});
+}
+const seatLocal=(st,x,y,z)=>st.g.localToWorld(new V3(x,y,z));
+scene.updateMatrixWorld(true);
+
+// 공용 효과
+const stream=new T.Mesh(new T.CylinderGeometry(.008,.006,1,8),new T.MeshStandardMaterial({color:0xcfe3ea,transparent:true,opacity:.78,roughness:.08}));stream.visible=false;
+const beanMesh=new T.InstancedMesh(new T.SphereGeometry(.014,8,6),mat(0x5a3519,.5),40);beanMesh.scale.set(1,1,1);beanMesh.count=0;
+const bubbles=new T.InstancedMesh(new T.SphereGeometry(.01,8,6),mat(0xc9a06e,.25),26);bubbles.count=0;
+const drops=[0,1,2,3,4].map(()=>{const d=new T.Mesh(new T.SphereGeometry(.0075,8,6),M.coffee);d.visible=false;return d});
+const steamMat=new T.SpriteMaterial({map:texSoft,transparent:true,opacity:.1,depthWrite:false,color:0xfff4e4});
+const steam=[0,1,2,3,4,5].map(i=>{const s=new T.Sprite(steamMat.clone());s.visible=false;s.userData.t=i/6;return s});
+const fx=new T.Group();fx.add(stream,beanMesh,bubbles,...drops,...steam);
+
+// 비와 낙엽
+const rainN=phone?260:520, rainPos=new Float32Array(rainN*6), rainGeo=new T.BufferGeometry();
+rainGeo.setAttribute('position',new T.BufferAttribute(rainPos,3));
+const rainVel=[];for(let i=0;i<rainN;i++){const a=R()*6.28,r=Math.sqrt(R())*3.3,x=Math.sin(a)*r,z=Math.cos(a)*r,y=R()*16;rainVel.push(14+R()*5);rainPos.set([x,y,z,x,y+.45,z],i*6)}
+const rain=new T.LineSegments(rainGeo,new T.LineBasicMaterial({color:0xcfdfea,transparent:true,opacity:.34}));rain.visible=false;rain.frustumCulled=false;scene.add(rain);
+const fall=[];for(let i=0;i<14;i++){const l=new T.Mesh(leafGeo,mat(palette[3+(i%3)],.7,0,{side:T.DoubleSide}));l.scale.setScalar(.3);l.userData={a:R()*6.28,r:3.4+R()*4,y:R()*8,s:.32+R()*.3,p:R()*6};scene.add(l);fall.push(l)}
+
+// ---------- 시간과 날씨 ----------
+const TIMES=[
+ {k:'낮',top:0x77add0,low:0xe4e4d6,sun:0xfff3dc,sI:3.3,el:1.22,az:.7,hemi:1.05,lamp:6,lampE:.5,fog:0xbfd0d2,exp:.92,shaft:.1},
+ {k:'노을',top:0x37446e,low:0xf0a163,sun:0xffae6b,sI:2.5,el:.85,az:2.2,hemi:.58,lamp:16,lampE:1.5,fog:0x8d6d63,exp:1.08,shaft:.07},
+ {k:'밤',top:0x0a1024,low:0x1d2743,sun:0xaec3ee,sI:.65,el:1.1,az:4.2,hemi:.5,lamp:24,lampE:.9,fog:0x10141f,exp:1.25,shaft:.025}];
+const h=new Date().getHours();let timeI=h>=7&&h<16?0:h>=16&&h<19?1:2, raining=false;
+function applyTime(){
+  const t=TIMES[timeI],wet=raining?.55:1;
+  skyU.top.value.set(t.top).multiplyScalar(raining?.62:1);skyU.low.value.set(t.low).multiplyScalar(raining?.6:1);
+  sun.color.set(t.sun);sun.intensity=t.sI*wet;hemi.intensity=t.hemi;hemi.color.set(t.top).lerp(new T.Color(0xffffff),.5);
+  sun.position.set(Math.cos(t.az)*Math.cos(t.el)*60,Math.sin(t.el)*60,Math.sin(t.az)*Math.cos(t.el)*60);
+  lamps.forEach(l=>l.intensity=t.lamp);lampMat.emissiveIntensity=t.lampE;
+  scene.fog.color.set(t.fog).multiplyScalar(raining?.7:1);renderer.toneMappingExposure=t.exp;shaft.material.opacity=t.shaft*wet;
+  rain.visible=raining;
+  $('btnTime').textContent=t.k;
+  $('btnRain').setAttribute('aria-pressed',String(raining));
+}
+applyTime();
+
+// ---------- 소리 (모두 코드로 합성) ----------
+const Au={ctx:null,on:true};
+// 공간음과 브루잉 소리는 50%가 원래 크기, 음악은 재생기 음량 그대로.
+const S={sound:true,music:true,musicVol:32,amb:50,fx:50,bg:true,cur:null,noMariposa:false};
+try{Object.assign(S,JSON.parse(localStorage.getItem('comes.settings')||'{}'))}catch(e){}
+function saveSet(){try{localStorage.setItem('comes.settings',JSON.stringify(S))}catch(e){}}
+function noiseBuf(c,sec){const b=c.createBuffer(1,c.sampleRate*sec,c.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;return b}
+function startAudio(){
+  if(Au.ctx){Au.ctx.resume();return}
+  const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
+  const c=new AC();Au.ctx=c;
+  const master=c.createGain();master.gain.value=.9;master.connect(c.destination);Au.master=master;
+  const rev=c.createConvolver(),ir=c.createBuffer(2,c.sampleRate*3.4,c.sampleRate);
+  for(let ch=0;ch<2;ch++){const d=ir.getChannelData(ch);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,3.2)}
+  rev.buffer=ir;const wet=c.createGain();wet.gain.value=.55;rev.connect(wet).connect(master);Au.rev=rev;const padBus=c.createGain();padBus.connect(master);padBus.connect(rev);Au.padBus=padBus;
+  const bus=out=>{const g=c.createGain();g.connect(out);return g};
+  Au.amb=bus(master);Au.chimes=bus(rev);Au.fx=bus(master);Au.fxWet=bus(rev);
+  const nb=noiseBuf(c,4);Au.nb=nb;
+  const loop=(type,freq,q,gain,out)=>{const s=c.createBufferSource();s.buffer=nb;s.loop=true;const f=c.createBiquadFilter();f.type=type;f.frequency.value=freq;f.Q.value=q;const g=c.createGain();g.gain.value=gain;s.connect(f).connect(g).connect(out);s.start();return{g,f}};
+  Au.leaf=loop('bandpass',1250,.6,.022,Au.amb);
+  const lfo=c.createOscillator(),lg=c.createGain();lfo.frequency.value=.11;lg.gain.value=.016;lfo.connect(lg).connect(Au.leaf.g.gain);lfo.start();
+  Au.room=loop('lowpass',260,.3,.03,Au.amb);
+  Au.rain=loop('highpass',1700,.3,0,Au.amb);
+  Au.water=loop('bandpass',1600,1.6,0,Au.fx);
+  Au.grind=loop('bandpass',2500,2.4,0,Au.fx);
+  setRainSound();applySound();
+  // 나지막한 배경 음악: 느린 화음과 드문 피아노풍 음
+  const chords=[[146.83,220,293.66,369.99],[123.47,185,246.94,329.63],[110,164.81,220,277.18],[130.81,196,246.94,329.63]];
+  const scale=[587.33,659.25,739.99,880,987.77];
+  let i=0;
+  const pad=()=>{const now=c.currentTime,ch=chords[i++%chords.length];
+    ch.forEach((f,k)=>{const o=c.createOscillator(),g=c.createGain();o.type=k%2?'triangle':'sine';o.frequency.value=f;o.detune.value=(k-1.5)*3;
+      g.gain.setValueAtTime(0,now);g.gain.linearRampToValueAtTime(.014,now+5);g.gain.linearRampToValueAtTime(0,now+13);o.connect(g);g.connect(padBus);o.start(now);o.stop(now+13.2)})};
+  const note=()=>{const now=c.currentTime,f=scale[Math.random()*scale.length|0],o=c.createOscillator(),g=c.createGain();o.type='triangle';o.frequency.value=f;
+    g.gain.setValueAtTime(0,now);g.gain.linearRampToValueAtTime(.022,now+.012);g.gain.exponentialRampToValueAtTime(.0001,now+3.2);o.connect(g);g.connect(padBus);o.start(now);o.stop(now+3.3);
+    setTimeout(note,3500+Math.random()*7500)};
+  const chime=()=>{const now=c.currentTime;[1760,2349,3136].forEach((f,k)=>{const o=c.createOscillator(),g=c.createGain();o.frequency.value=f+Math.random()*7;g.gain.setValueAtTime(.009/(k+1),now+k*.09);g.gain.exponentialRampToValueAtTime(.0001,now+2.8+k*.09);o.connect(g);g.connect(Au.chimes);o.start(now+k*.09);o.stop(now+3.2)});setTimeout(chime,18000+Math.random()*26000)};
+  pad();setInterval(()=>{if(c.state==='running')pad()},12000);setTimeout(note,2500);setTimeout(chime,7000);
+}
+function setRainSound(){if(Au.rain)Au.rain.g.gain.setTargetAtTime(raining?.05:0,Au.ctx.currentTime,.8);if(Au.leaf)Au.leaf.f.frequency.value=raining?900:1250}
+function gainTo(n,v,tc=.08){if(Au[n])Au[n].g.gain.setTargetAtTime(v,Au.ctx.currentTime,tc)}
+function tick(freq,dur,vol){const c=Au.ctx;if(!c)return;const now=c.currentTime,o=c.createOscillator(),g=c.createGain();o.frequency.setValueAtTime(freq,now);o.frequency.exponentialRampToValueAtTime(freq*.6,now+dur);g.gain.setValueAtTime(vol,now);g.gain.exponentialRampToValueAtTime(.0001,now+dur);o.connect(g);g.connect(Au.fx);g.connect(Au.fxWet);o.start(now);o.stop(now+dur+.02)}
+
+// ---------- 내 사람 ----------
+const me=makePerson({cloth:0xb76f4a,apron:0xb76f4a,skin:0xecc29d,hair:0x26190f,pants:0x3a3f47});
+scene.add(me.g);me.g.position.set(0,0,14);me.g.rotation.y=Math.PI;me.torso.castShadow=true;
+const person={pos:me.g.position,ry:Math.PI,target:null,seatGoal:null,walk:0};
+
+// ---------- 카메라 ----------
+const cam={yaw:0,pitch:.3,dist:6.4,sy:0,sp:.02,focus:new V3(0,1.4,20),pos:new V3(0,4,31),look:new V3(0,4,0),fov:52,fovT:52,rate:1.6};
+camera.position.copy(cam.pos);
+
+// ---------- 상태 ----------
+let mode='intro', seatI=-1, brew=null, drink=0, bean=null, lastPhase='walk';
+const BEANS=[
+ {n:'에티오피아 예가체프 워시드',d:'꽃향, 레몬, 가벼운 단맛',temp:92,col:0x5b351b},
+ {n:'콜롬비아 우일라 워시드',d:'캐러멜, 붉은 사과, 둥근 단맛',temp:91,col:0x4a2c17},
+ {n:'케냐 니에리 워시드',d:'블랙커런트, 자몽, 선명한 산미',temp:93,col:0x3f2413}];
+function hint(t){$('hint').textContent=t||''}
+function dock(items){const d=$('dock');d.textContent='';items.forEach(it=>{const b=document.createElement('button');b.type='button';b.className='act'+(it.main?' main':'');b.textContent=it.t;b.onclick=it.f;d.appendChild(b)})}
+function walkDock(){dock([{t:'빈자리로 가기',main:true,f:goNearest}]);hint(phone?'바닥을 누르면 걷습니다. 바 앞 의자를 누르면 앉습니다.':'바닥을 누르면 걷습니다. 바 앞 의자를 누르면 앉습니다. 끌어서 둘러보세요.')}
+function seatWorld(i,r=STOOL_R){return stations[i].g.localToWorld(new V3(0,0,r))}
+function goNearest(){let best=-1,d=1e9;stations.forEach((s,i)=>{if(s.taken)return;const w=seatWorld(i),k=w.distanceTo(person.pos);if(k<d){d=k;best=i}});if(best>=0)goSeat(best)}
+function goSeat(i){if(stations[i].taken){hint('다른 손님이 앉은 자리입니다. 옆자리를 골라 주세요.');return}person.seatGoal=i;person.target=seatWorld(i)}
+function sit(i){
+  seatI=i;mode='seated';person.target=null;person.seatGoal=null;me.g.visible=false;
+  cam.sy=0;cam.sp=-.03;cam.fovT=52;cam.rate=2;
+  barSpot.target.position.copy(seatLocal(stations[i],0,BAR_H+.2,6.35));barSpot.position.copy(seatLocal(stations[i],.1,3.4,6.6));
+  fxAttach();seatDock();
+  hint('내 앞의 바리스타, 그 뒤의 나무. 끌어서 위를 올려다보세요.');sendPresence(true);
+}
+function seatDock(){dock([{t:'한 잔 내려 주세요',main:true,f:openBeans},{t:'일어나기',f:stand}])}
+function stand(){
+  resetSet(stations[seatI]);
+  const w=seatWorld(seatI,8.9);person.pos.copy(w);me.g.visible=true;me.g.rotation.y=stations[seatI].g.rotation.y+Math.PI;person.ry=me.g.rotation.y;
+  cam.yaw=stations[seatI].g.rotation.y;seatI=-1;mode='walk';cam.fovT=52;cam.rate=2;$('card').hidden=true;walkDock();sendPresence(true);
+}
+function openBeans(){
+  const l=$('beanList');l.textContent='';
+  BEANS.forEach(b=>{const e=document.createElement('button');e.type='button';e.className='bean';const x=document.createElement('b'),y=document.createElement('span');x.textContent=b.n;y.textContent=b.d;e.append(x,y);e.onclick=()=>{$('sheetBeans').hidden=true;startBrew(b)};l.appendChild(e)});
+  $('sheetBeans').hidden=false;dock([{t:'닫기',f:()=>{$('sheetBeans').hidden=true;seatDock()}}]);hint('');
+}
+function fxAttach(){stations[seatI].g.add(fx)}
+function resetSet(s){
+  s.kettle.position.set(-.52,BAR_H,6.4);s.kettle.rotation.set(0,0,0);s.liquid.visible=false;s.liquid.scale.y=.001;s.bed.visible=false;s.bed.scale.set(1,.5,1);
+  s.server.position.set(0,BAR_H+.04,6.35);s.server.rotation.set(0,0,0);s.cupLiq.visible=false;s.cup.rotation.set(0,0,0);s.cup.position.set(.26,BAR_H,6.95);s.tin.position.set(.84,BAR_H+.045,6.25);s.tin.rotation.set(0,0,0);s.crank.rotation.y=0;
+  stream.visible=false;beanMesh.count=0;bubbles.count=0;drops.forEach(d=>d.visible=false);steam.forEach(q=>q.visible=false);
+  gainTo('water',0);gainTo('grind',0);M.bed.color.set(0x4a2c17);
+}
+
+// ---------- 브루잉 진행 ----------
+const STEPS=[
+ {n:'원두 계량',t:'오늘의 원두 15g. 콩이 떨어지는 소리부터 시작합니다.',d:7},
+ {n:'분쇄',t:'갈리는 순간 향이 먼저 도착합니다.',d:7},
+ {n:'가루 담기',t:'드리퍼에 담고 저울을 0으로 맞춥니다.',d:4},
+ {n:'뜸 들이기',t:'물 30g이 닿으면 가루가 빵처럼 부풀어 오릅니다.',d:13},
+ {n:'첫 번째 붓기',t:'가는 물줄기가 원을 그리며 120g까지 올라갑니다.',d:12},
+ {n:'두 번째 붓기',t:'속도를 늦춰 225g까지 채웁니다.',d:12},
+ {n:'방울',t:'이제 기다림입니다. 한 방울씩 서버에 고입니다.',d:10},
+ {n:'내 잔에',t:'당신의 잔에 따릅니다.',d:8}];
+const TOTAL=STEPS.reduce((a,s)=>a+s.d,0);
+function startBrew(b){
+  bean=b;const s=stations[seatI];resetSet(s);M.bed.color.set(b.col);
+  brew={t:0,i:-1,speed:1,g:0,sim:0,liq:0,dropT:0,beanT:[],s};
+  mode='brew';cam.fovT=40;cam.rate=1.4;cam.sy=0;cam.sp=-.22;hint('');
+  $('card').hidden=false;$('temp').textContent=b.temp+'°C';
+  dock([{t:'빨리 보기',f:e=>{brew.speed=brew.speed===1?4:1;$('dock').firstChild.textContent=brew.speed===1?'빨리 보기':'보통 속도'}}]);
+  for(let i=0;i<40;i++)brew.beanT.push(R()*.55);
+  beanMesh.count=40;sendPresence(true);
+}
+const tipLocal=new V3(.26,.21,0), handleLocal=new V3(-.16,.13,0);
+function kettlePose(s,k,ox,oz,pour){
+  const tilt=pour?-.72:-.3;const rz=lerp(0,tilt,k);s.kettle.rotation.z=rz;
+  const tip=tipLocal.clone().applyQuaternion(s.kettle.quaternion);
+  const px=ox-tip.x,py=BAR_H+.72-tip.y,pz=6.35+oz-tip.z;
+  s.kettle.position.set(lerp(-.52,px,k),lerp(BAR_H,py,k),lerp(6.4,pz,k));
+  return s.kettle.position.clone().add(tip);
+}
+function handOnKettle(s){return handleLocal.clone().applyQuaternion(s.kettle.quaternion).add(s.kettle.position).sub(s.p.g.position)}
+function pourLine(tip,y,color){stream.visible=true;stream.material.color.set(color);setLine(stream,tip,tmpB.set(tip.x+Math.sin(performance.now()*.03)*.002,y,tip.z))}
+function runBrew(dt){
+  const b=brew,s=b.s;b.t+=dt*b.speed;
+  let acc=0,idx=STEPS.length-1;for(let i=0;i<STEPS.length;i++){if(b.t<acc+STEPS[i].d){idx=i;break}acc+=STEPS[i].d}
+  const p=clamp((b.t-acc)/STEPS[idx].d);
+  if(idx!==b.i){b.i=idx;$('cardStep').textContent=`${idx+1} / ${STEPS.length}`;$('cardName').textContent=STEPS[idx].n;$('cardText').textContent=STEPS[idx].t;stream.visible=false;gainTo('water',0);gainTo('grind',0)}
+  const base=s.p.g.position, L=new V3(.24,1.28,.34), Rt=new V3(-.24,1.28,.34);
+  const rel=(x,y,z)=>new V3(x-base.x,y-base.y,z-base.z);
+  let pouring=false;
+  if(idx===0){
+    const k=smooth(seg(p,0,.14))*(1-smooth(seg(p,.88,1)));
+    s.tin.position.set(lerp(.84,.62,k),lerp(BAR_H+.045,BAR_H+.5,k),lerp(6.25,6.3,k));s.tin.rotation.z=k*1.5;
+    L.copy(rel(s.tin.position.x+.02,s.tin.position.y,s.tin.position.z-.05));
+    b.g=15*seg(p,.14,.84);
+    for(let i=0;i<40;i++){const u=seg(p,.14+b.beanT[i],.14+b.beanT[i]+.18),a=i*2.4;
+      tmpV.set(.55+Math.sin(a)*.03,lerp(BAR_H+.46,BAR_H+.27,u*u),6.31+Math.cos(a)*.03);
+      dummy.position.copy(tmpV);dummy.scale.setScalar(u>0&&u<1?1:0);dummy.rotation.set(a,a,0);dummy.updateMatrix();beanMesh.setMatrixAt(i,dummy.matrix)}
+    dummy.scale.set(1,1,1);beanMesh.instanceMatrix.needsUpdate=true;
+    if(p>.16&&p<.8&&Math.random()<dt*22)tick(2400+Math.random()*900,.03,.012);
+  }else if(idx===1){
+    beanMesh.count=0;s.crank.rotation.y+=dt*b.speed*9;const a=s.crank.rotation.y;
+    const c=seatLocal;L.copy(rel(.52+Math.cos(a)*.15,BAR_H+.37,6.32-Math.sin(a)*.15));
+    gainTo('grind',p<.92?.035:0);Au.grind&&(Au.grind.f.frequency.value=2200+Math.sin(performance.now()*.02)*500);
+    steamPuff(.52,BAR_H+.4,6.32,dt,.5);
+  }else if(idx===2){
+    const k=Math.sin(p*Math.PI);s.tin.position.set(lerp(.84,.12,k),lerp(BAR_H+.045,BAR_H+.62,k),lerp(6.25,6.33,k));s.tin.rotation.z=k*1.7;
+    L.copy(rel(s.tin.position.x+.03,s.tin.position.y,s.tin.position.z-.05));
+    s.bed.visible=true;s.bed.scale.set(.2+.8*seg(p,.3,.75),.1+.42*seg(p,.3,.75),.2+.8*seg(p,.3,.75));
+    b.g=p>.9?0:15;
+  }else if(idx===3){
+    const k=smooth(seg(p,0,.16))*(1-smooth(seg(p,.84,1)));
+    const pour=p>.18&&p<.5,tip=kettlePose(s,k,Math.cos(p*20)*.03*(pour?1:0),Math.sin(p*20)*.03*(pour?1:0),true);
+    Rt.copy(handOnKettle(s));pouring=pour;
+    if(pour){pourLine(tip,BAR_H+.47,0xcfe3ea);gainTo('water',.05);b.g=30*seg(p,.18,.5)}else{stream.visible=false;gainTo('water',0)}
+    const sw=smooth(seg(p,.25,.9));s.bed.scale.set(1+.1*sw,.52+.75*sw,1+.1*sw);
+    b.sim=30*p;b.liq=.05*seg(p,.5,1);bubbleTick(s,sw,p);
+  }else if(idx===4||idx===5){
+    const first=idx===4,k=first?smooth(seg(p,0,.1)):1-smooth(seg(p,.88,1));
+    const a=p*(first?44:36),r=.02+.055*(.5+.5*Math.sin(p*14));
+    const pour=first?p>.1:p<.84,tip=kettlePose(s,k,pour?Math.cos(a)*r:0,pour?Math.sin(a)*r:0,true);
+    Rt.copy(handOnKettle(s));pouring=pour;
+    if(pour){pourLine(tip,BAR_H+.47,0xcfe3ea);gainTo('water',.05+.02*Math.sin(p*30));b.g=first?30+90*seg(p,.1,1):120+105*seg(p,0,.84)}
+    else{stream.visible=false;gainTo('water',0)}
+    b.sim=first?30+45*p:75+45*p;b.liq=first?.05+.3*p:.35+.35*p;
+    s.bed.scale.y=first?lerp(1.27,.9,p):lerp(.9,.72,p);bubbleTick(s,.4,p);
+  }else if(idx===6){
+    bubbles.count=0;kettlePose(s,0,0,0,false);s.kettle.position.set(-.52,BAR_H,6.4);s.kettle.rotation.z=0;
+    b.g=225;b.sim=120+40*p;b.liq=.7+.3*p;s.bed.scale.y=lerp(.72,.46,p);
+    L.set(.24,1.28,.34);Rt.set(-.24,1.28,.34);
+  }else{
+    const lift=smooth(seg(p,0,.2))*(1-smooth(seg(p,.85,1))),tilt=smooth(seg(p,.2,.34))*(1-smooth(seg(p,.72,.84)));
+    s.server.position.set(lerp(0,.07,lift),BAR_H+.04+lift*.26,lerp(6.35,6.92,lift));s.server.rotation.z=-tilt*1.15;
+    Rt.copy(new V3(s.server.position.x-.14,s.server.position.y+.1,s.server.position.z-.02).sub(base));
+    const flow=seg(p,.26,.76);
+    s.liquid.scale.y=Math.max(.001,.17*(1-flow));
+    if(tilt>.6&&p<.76){const lip=tmpA.set(.11,.2,0).applyEuler(s.server.rotation).add(s.server.position);pourLine(lip.clone(),BAR_H+.07,0x2a1508);gainTo('water',.03)}else{stream.visible=false;gainTo('water',0)}
+    s.cupLiq.visible=flow>0;s.cupLiq.position.y=.03+.06*flow;s.cupLiq.scale.setScalar(.78+.22*flow);
+    s.bed.visible=true;
+  }
+  if(idx>=3&&idx<=6){
+    s.liquid.visible=b.liq>0;s.liquid.scale.y=Math.max(.001,.17*b.liq);s.liquid.position.y=.012+s.liquid.scale.y/2;
+    const rate=idx===6?lerp(6,1.4,p):7;b.dropT-=dt*b.speed*rate;
+    if(b.liq>0&&b.dropT<=0){b.dropT=1;const d=drops.find(x=>!x.visible);if(d){d.visible=true;d.position.set(0,BAR_H+.33,6.35);d.userData.v=0}}
+  }
+  drops.forEach(d=>{if(!d.visible)return;d.userData.v+=dt*b.speed*3.2;d.position.y-=d.userData.v*dt*b.speed;if(d.position.y<BAR_H+.06+.17*b.liq){d.visible=false;tick(1000+Math.random()*420,.05,.016)}});
+  s.p.headG.rotation.x=lerp(s.p.headG.rotation.x,.24,dt*3);
+  s.p.arm(0,L);s.p.arm(1,Rt);
+  barSpot.intensity=lerp(barSpot.intensity,22,dt*1.5);
+  $('grams').textContent=b.g.toFixed(1)+' g';
+  const sec=Math.floor(b.sim);$('clock').textContent=Math.floor(sec/60)+':'+String(sec%60).padStart(2,'0');
+  if(b.t>=TOTAL)served();
+}
+function bubbleTick(s,sw,p){
+  bubbles.count=26;const t=performance.now()*.001;
+  for(let i=0;i<26;i++){const a=i*2.399,r=.012*Math.sqrt(i)*1.0,ph=(t*.8+i*.37)%1;
+    dummy.position.set(Math.sin(a)*r,BAR_H+.41+.078*s.bed.scale.y*(1-r*r*60)+.003,6.35+Math.cos(a)*r);
+    dummy.scale.setScalar(sw*(.4+ph*1.2)*(ph>.9?0:1));dummy.updateMatrix();bubbles.setMatrixAt(i,dummy.matrix)}
+  dummy.scale.set(1,1,1);bubbles.instanceMatrix.needsUpdate=true;
+}
+function steamPuff(x,y,z,dt,scale){
+  steam.forEach((q,i)=>{q.visible=true;q.userData.t=(q.userData.t+dt*.28)%1;const u=q.userData.t;
+    q.position.set(x+Math.sin(u*7+i)*.04,y+u*.42,z+Math.cos(u*5+i)*.03);q.scale.setScalar((.08+u*.24)*(scale||1));q.material.opacity=.13*Math.sin(u*Math.PI)})
+}
+function served(){
+  const s=brew.s;mode='served';brew=null;stream.visible=false;gainTo('water',0);s.server.position.set(0,BAR_H+.04,6.35);s.server.rotation.set(0,0,0);s.liquid.visible=false;
+  s.p.arm(0,new V3(.32,.64,.12));s.p.arm(1,new V3(-.32,.64,.12));
+  $('grams').textContent='225.0 g';$('clock').textContent='2:40';$('cardStep').textContent='완성';$('cardName').textContent=bean.n;$('cardText').textContent=bean.d;tick(520,.09,.03);
+  cam.fovT=44;cam.sp=-.14;
+  dock([{t:'한 모금 마시기',main:true,f:sip}]);sendPresence(true);
+}
+function sip(){
+  if(mode!=='served')return;mode='drink';drink=0;dock([]);tick(300,.25,.01);
+}
+function openTaste(){
+  mode='taste';$('card').hidden=true;
+  const box=$('tasteRows');box.textContent='';const vals={};
+  ['산미','단맛','쓴맛','바디'].forEach((n,i)=>{const r=document.createElement('label');r.className='row';const a=document.createElement('span'),inp=document.createElement('input'),o=document.createElement('output');a.textContent=n;inp.type='range';inp.min=1;inp.max=5;inp.value=3;inp.id='taste'+i;o.textContent='3';vals[n]=3;inp.oninput=()=>{o.textContent=inp.value;vals[n]=+inp.value};r.append(a,inp,o);box.appendChild(r)});
+  let n=0;try{n=JSON.parse(localStorage.getItem('hangeuru.cups')||'[]').length}catch(e){}
+  $('tasteNote').textContent=n?`지금까지 ${n}잔을 기록했습니다. 기록은 이 브라우저에만 남습니다.`:'기록은 이 브라우저에만 남습니다.';
+  $('sheetTaste').hidden=false;
+  dock([{t:'기록하고 한 잔 더',main:true,f:()=>finish(vals,true)},{t:'기록하고 일어나기',f:()=>finish(vals,false)}]);
+}
+function finish(vals,again){
+  try{const k='hangeuru.cups',l=JSON.parse(localStorage.getItem(k)||'[]');l.push({bean:bean.n,vals,at:Date.now()});localStorage.setItem(k,JSON.stringify(l.slice(-200)))}catch(e){}
+  $('sheetTaste').hidden=true;resetSet(stations[seatI]);
+  if(again){mode='seated';cam.fovT=52;cam.sp=.03;seatDock();hint('');openBeans()}else{stand()}
+  sendPresence(true);
+}
+
+// ---------- 입력 ----------
+const ray=new T.Raycaster(), ptr=new T.Vector2(), plane=new T.Plane(UP,0);
+let down=null;
+const el=renderer.domElement, keys={};
+el.addEventListener('pointerdown',e=>{down={x:e.clientX,y:e.clientY,moved:0,lx:e.clientX,ly:e.clientY};el.setPointerCapture&&el.setPointerCapture(e.pointerId)});
+el.addEventListener('pointermove',e=>{
+  if(!down)return;const dx=e.clientX-down.lx,dy=e.clientY-down.ly;down.lx=e.clientX;down.ly=e.clientY;down.moved+=Math.abs(dx)+Math.abs(dy);
+  if(mode==='walk'){cam.yaw-=dx*.005;cam.pitch=clamp(cam.pitch+dy*.004,.08,1.15)}
+  else if(mode!=='intro'&&mode!=='brew'){cam.sy=clamp(cam.sy-dx*.003,-1.15,1.15);cam.sp=clamp(cam.sp+dy*.003,-.5,1.05)}
+  else if(mode==='brew'){cam.sy=clamp(cam.sy-dx*.002,-.5,.5);cam.sp=clamp(cam.sp+dy*.002,-.45,.9)}
+});
+el.addEventListener('pointerup',e=>{
+  if(down&&down.moved<8&&mode==='walk'){
+    const r=el.getBoundingClientRect();ptr.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(ptr,camera);
+    const hit=ray.intersectObjects(stoolHits,false)[0];
+    if(hit){goSeat(hit.object.userData.seat)}
+    else{const p=ray.ray.intersectPlane(plane,new V3());if(p){person.seatGoal=null;person.target=p}}
+  }
+  down=null;
+});
+el.addEventListener('wheel',e=>{e.preventDefault();cam.dist=clamp(cam.dist+e.deltaY*.005,3,11)},{passive:false});
+addEventListener('keydown',e=>{if(!$('sheetSet').hidden){if(e.key==='Escape')closeSet();return}keys[e.key.toLowerCase()]=true});
+addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false});
+$('btnEnter').onclick=()=>{$('intro').hidden=true;mode='walk';cam.rate=1.1;walkDock();if(S.sound)startAudio();playMusic();sendPresence(true)};
+$('btnSound').onclick=()=>setSound(!S.sound);
+
+// ---------- 설정과 음악 ----------
+// 대표님 파일. 비공개 페이지 전용, 다른 사람에게 공유하기 전에 뺀다.
+// 같은 폴더의 파일을 먼저 찾고, 없으면 게시된 페이지의 파일을 쓴다. 둘 다 없으면 목록에 나오지 않는다.
+const MARIPOSA=['./Peach%20Tree%20Rascals%20-%20Mariposa%20(Acoustic).mp4','/_blob/aa830a4f19f114efc0ddffb75356d395'];
+const song=new Audio();song.preload='auto';
+const tracks=[];
+let mariposa=null, songId=null, failed=0;
+function say(t){$('trackMsg').textContent=t}
+function curTrack(){return S.cur==='pad'?null:tracks.find(t=>t.id===S.cur)||tracks[0]||null}
+function applySound(){
+  song.volume=S.musicVol/100;song.muted=!S.sound;
+  if(!Au.ctx)return;
+  Au.master.gain.value=S.sound?.9:0;
+  Au.amb.gain.value=Au.chimes.gain.value=S.amb/50;
+  Au.fx.gain.value=Au.fxWet.gain.value=S.fx/50;
+  Au.padBus.gain.value=S.music&&song.paused?S.musicVol/32:0;
+}
+function playMusic(){
+  const t=mode!=='intro'&&S.sound&&S.music?curTrack():null;
+  if(!t)song.pause();
+  else{if(songId!==t.id){songId=t.id;song.src=t.url}song.play().catch(()=>{})}
+  applySound();renderTracks();
+}
+function pickTrack(id){S.cur=id;S.music=true;failed=0;saveSet();syncSet();playMusic()}
+function dropTrack(t){
+  tracks.splice(tracks.indexOf(t),1);
+  if(t.id==='mariposa')S.noMariposa=true;else{URL.revokeObjectURL(t.url);dbWrite(s=>s.delete(t.id)).catch(()=>{})}
+  if(S.cur===t.id)S.cur=null;
+  if(songId===t.id){songId=null;song.pause();song.removeAttribute('src');song.load()}
+  saveSet();say(`${t.name}을(를) 뺐습니다. 원본 파일은 그대로 있습니다.`);playMusic();
+}
+function renderTracks(){
+  const box=$('trackList'),cur=curTrack(),focused=box.contains(document.activeElement)&&document.activeElement.dataset.k;box.textContent='';
+  const row=(id,name,on,t)=>{
+    const r=document.createElement('div'),b=document.createElement('button'),d=document.createElement('i'),n=document.createElement('em');
+    r.className='track';b.type='button';b.className='pick';b.dataset.k=id;b.setAttribute('aria-pressed',String(on));n.textContent=name;b.append(d,n);b.onclick=()=>pickTrack(id);r.appendChild(b);
+    if(t){const x=document.createElement('button');x.type='button';x.className='drop';x.dataset.k='x'+id;x.textContent='✕';x.setAttribute('aria-label',name+' 빼기');x.onclick=()=>dropTrack(t);r.appendChild(x)}
+    box.appendChild(r);
+  };
+  tracks.forEach(t=>row(t.id,t.name,t===cur,t));
+  row('pad','카페 기본 음악',!cur);
+  $('btnMariposa').hidden=!(mariposa&&S.noMariposa);
+  // 목록을 다시 그려도 키보드 위치를 잃지 않게 한다.
+  if(focused){const f=[...box.querySelectorAll('button')].find(b=>b.dataset.k===focused)||$('btnAddTrack');f.focus()}
+}
+song.addEventListener('playing',()=>{failed=0;applySound()});
+song.addEventListener('pause',applySound);
+song.addEventListener('ended',()=>{
+  const c=curTrack(),n=tracks[(tracks.indexOf(c)+1)%tracks.length];
+  if(n===c){song.currentTime=0;song.play().catch(()=>{})}else{S.cur=n.id;saveSet();playMusic()}
+});
+song.addEventListener('error',()=>{
+  const c=curTrack();if(!songId||!c)return;
+  say(`${c.name}은(는) 재생할 수 없는 파일입니다.`);
+  // 재생되는 곡을 찾을 때까지만 넘기고, 전부 안 되면 기본 음악으로 돌아간다.
+  S.cur=++failed<tracks.length?tracks[(tracks.indexOf(c)+1)%tracks.length].id:'pad';songId=null;playMusic();
+});
+(function findMariposa(i){
+  if(i>=MARIPOSA.length)return;
+  const a=new Audio();a.preload='metadata';a.onerror=()=>findMariposa(i+1);
+  a.onloadedmetadata=()=>{mariposa={id:'mariposa',name:'Mariposa (Acoustic)',url:MARIPOSA[i]};if(!S.noMariposa)tracks.unshift(mariposa);playMusic()};
+  a.src=MARIPOSA[i];
+})(0);
+$('btnMariposa').onclick=()=>{S.noMariposa=false;tracks.unshift(mariposa);pickTrack('mariposa')};
+
+// 추가한 곡은 이 브라우저의 저장소에만 둔다. 서버로 보내지 않는다.
+const dbOpen=new Promise(ok=>{try{const r=indexedDB.open('comes-music',1);r.onupgradeneeded=()=>r.result.createObjectStore('tracks',{keyPath:'id'});r.onsuccess=()=>ok(r.result);r.onerror=()=>ok(null)}catch(e){ok(null)}});
+function dbWrite(f){return dbOpen.then(db=>new Promise((ok,no)=>{if(!db)return no();const tx=db.transaction('tracks','readwrite');f(tx.objectStore('tracks'));tx.oncomplete=ok;tx.onabort=tx.onerror=()=>no(tx.error)}))}
+dbOpen.then(db=>{
+  if(!db)return;const r=db.transaction('tracks').objectStore('tracks').getAll();
+  r.onsuccess=()=>{r.result.sort((a,b)=>a.at-b.at).forEach(x=>tracks.push({id:x.id,name:x.name,size:x.file.size,url:URL.createObjectURL(x.file)}));playMusic()};
+}).catch(()=>{});
+async function addFiles(list){
+  const files=[...list].filter(f=>f.type.startsWith('audio/')||f.type==='video/mp4'||/\.(mp3|m4a|mp4|wav|ogg|flac|aac)$/i.test(f.name));
+  if(!files.length){say('음악 파일만 추가할 수 있습니다.');return}
+  let first=null,kept=true;
+  for(const f of files){
+    const name=f.name.replace(/\.[^.]+$/,'');
+    if(tracks.some(t=>t.name===name&&t.size===f.size))continue;
+    const t={id:'t'+Date.now()+Math.random().toString(36).slice(2,7),name,size:f.size,url:URL.createObjectURL(f)};
+    try{await dbWrite(s=>s.put({id:t.id,name,file:f,at:Date.now()}))}catch(e){kept=false}
+    tracks.push(t);first=first||t;
+  }
+  if(!first){say('이미 목록에 있는 곡입니다.');return}
+  say(kept?'곡을 추가했습니다. 이 브라우저에만 저장됩니다.':'브라우저에 저장하지 못해 이번 방문에서만 들을 수 있습니다.');
+  pickTrack(first.id);
+}
+$('btnAddTrack').onclick=()=>$('fileTrack').click();
+$('fileTrack').onchange=e=>{addFiles(e.target.files);e.target.value=''};
+addEventListener('dragover',e=>e.preventDefault());
+addEventListener('drop',e=>{e.preventDefault();if(mode!=='intro'&&e.dataTransfer.files.length){openSet();addFiles(e.dataTransfer.files)}});
+
+function setSound(on){S.sound=on;saveSet();if(on)startAudio();syncSet();playMusic()}
+function syncSet(){
+  const b=$('btnSound');b.setAttribute('aria-pressed',String(S.sound));b.textContent=S.sound?'소리 켜짐':'소리 꺼짐';
+  $('swSound').setAttribute('aria-checked',String(S.sound));$('swMusic').setAttribute('aria-checked',String(S.music));$('swBg').setAttribute('aria-checked',String(S.bg));
+  $('sheetSet').toggleAttribute('data-off',!S.sound);
+  $('bgText').textContent=S.bg?'다른 탭으로 가도 소리가 이어집니다.':'다른 탭으로 가면 모든 소리가 멈춥니다.';
+}
+function openSet(){Object.keys(keys).forEach(k=>keys[k]=false);$('sheetSet').hidden=false;$('btnSetClose').focus()}
+function closeSet(){$('sheetSet').hidden=true;$('btnSet').focus()}
+$('btnSet').onclick=()=>$('sheetSet').hidden?openSet():closeSet();
+$('btnSetClose').onclick=closeSet;
+$('swSound').onclick=()=>setSound(!S.sound);
+$('swMusic').onclick=()=>{S.music=!S.music;saveSet();syncSet();playMusic()};
+$('swBg').onclick=()=>{S.bg=!S.bg;saveSet();syncSet()};
+[['volMusic','musicVol'],['volAmb','amb'],['volFx','fx']].forEach(([id,k])=>{
+  const r=$(id),o=r.nextElementSibling;r.value=S[k];o.textContent=S[k]+'%';
+  r.oninput=()=>{S[k]=+r.value;o.textContent=r.value+'%';applySound();saveSet()};
+});
+syncSet();renderTracks();
+
+$('btnTime').onclick=()=>{timeI=(timeI+1)%3;applyTime()};
+$('btnRain').onclick=()=>{raining=!raining;applyTime();setRainSound()};
+
+// ---------- 함께 있는 사람 (열려 있는 동안만) ----------
+let room=null, lastSend=0;const peers=new Map();
+function sendPresence(force){
+  if(!room)return;const now=performance.now();if(!force&&now-lastSend<200)return;lastSend=now;
+  room.presence({x:+person.pos.x.toFixed(2),z:+person.pos.z.toFixed(2),ry:+person.ry.toFixed(2),seat:seatI,phase:mode}).catch(()=>{});
+}
+function hue(s){let h=0;for(const c of s)h=(h*31+c.charCodeAt(0))|0;return Math.abs(h)%360}
+function syncPeers(list){
+  const seen=new Set();stations.forEach(s=>s.taken=false);let others=0;
+  list.forEach(p=>{
+    if(p.sameTab||p.kind!=='viewer')return;seen.add(p.peer);if(others>=40)return;others++;
+    const q=p.presence||{},x=Number(q.x),z=Number(q.z);let e=peers.get(p.peer);
+    if(!e){const c=new T.Color().setHSL(hue(p.peer)/360,.42,.52).getHex(),o=makePerson({cloth:c,apron:c,skin:0xe6bd98,hair:0x2a1c12,pants:0x3a3f47});o.arm(0,new V3(.33,.64,.05));o.arm(1,new V3(-.33,.64,.05));scene.add(o.g);e={o,x:0,z:0,ry:0,seat:-1};peers.set(p.peer,e);o.g.position.set(isFinite(x)?x:0,0,isFinite(z)?z:20)}
+    if(isFinite(x)&&Math.hypot(x,z)<ROOM_R){e.x=x;e.z=z}
+    e.ry=Number(q.ry)||0;e.seat=Number.isInteger(q.seat)&&q.seat>=0&&q.seat<SEATS?q.seat:-1;
+    if(e.seat>=0)stations[e.seat].taken=true;
+  });
+  peers.forEach((e,k)=>{if(!seen.has(k)){scene.remove(e.o.g);peers.delete(k)}});
+  const n=$('people');n.hidden=false;n.textContent=others>0?`함께 ${others+1}명`:'지금은 혼자';
+}
+if(window.claude&&claude.use)claude.use('room').then(r=>{
+  if(!r)return;room=r;r.onPeers(c=>syncPeers(c.peers),()=>{});if(mode!=='intro')sendPresence(true);
+}).catch(()=>{});
+
+// ---------- 매 프레임 ----------
+function resize(){const w=innerWidth,h=innerHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}
+addEventListener('resize',resize);resize();
+const clock=new T.Clock();let elapsed=0;
+function collide(p){
+  const r=Math.hypot(p.x,p.z),min=BAR_OUT+.35,max=ROOM_R-.9;
+  if(r<min){p.x*=min/r;p.z*=min/r}else if(r>max){p.x*=max/r;p.z*=max/r}
+  colliders.forEach(c=>{const dx=p.x-c.x,dz=p.z-c.z,d=Math.hypot(dx,dz);if(d<c.r&&d>0){p.x=c.x+dx/d*c.r;p.z=c.z+dz/d*c.r}});
+}
+function updateWalk(dt){
+  let mx=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0),mz=(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0),moving=false;
+  if(mx||mz){person.target=null;person.seatGoal=null;const c=Math.cos(cam.yaw),s=Math.sin(cam.yaw),dx=mx*c+mz*s,dz=-mx*s+mz*c,l=Math.hypot(dx,dz);
+    person.pos.x+=dx/l*3.4*dt;person.pos.z+=dz/l*3.4*dt;person.ry=Math.atan2(dx,dz);moving=true}
+  else if(person.target){const dx=person.target.x-person.pos.x,dz=person.target.z-person.pos.z,d=Math.hypot(dx,dz);
+    if(person.seatGoal!==null&&d<.55){sit(person.seatGoal);return}
+    if(d<.12)person.target=null;else{const s=Math.min(d,3.4*dt);person.pos.x+=dx/d*s;person.pos.z+=dz/d*s;person.ry=Math.atan2(dx,dz);moving=true}}
+  collide(person.pos);
+  let dr=person.ry-me.g.rotation.y;dr=Math.atan2(Math.sin(dr),Math.cos(dr));me.g.rotation.y+=dr*Math.min(1,dt*9);
+  person.walk+=dt*(moving?9:0);const sw=moving?Math.sin(person.walk):0;
+  me.legL.rotation.x=sw*.55;me.legR.rotation.x=-sw*.55;me.g.position.y=moving?Math.abs(sw)*.035:0;
+  me.arm(0,new V3(.33,.64,.06-sw*.24));me.arm(1,new V3(-.33,.64,.06+sw*.24));
+  if(moving)sendPresence(false);
+}
+function updateCamera(dt){
+  const des=new V3(),look=new V3();
+  if(mode==='intro'){const a=reduced?.5:.5+elapsed*.04;des.set(Math.sin(a)*16,2.4+Math.sin(elapsed*.1)*.3,Math.cos(a)*16);look.set(0,4.2,0)}
+  else if(mode==='walk'){
+    look.copy(person.pos);look.y=1.5;const c=Math.cos(cam.pitch)*cam.dist;
+    des.set(person.pos.x+Math.sin(cam.yaw)*c,Math.min(1.4+Math.sin(cam.pitch)*cam.dist,CEIL-.5),person.pos.z+Math.cos(cam.yaw)*c);
+    const dr=Math.hypot(des.x,des.z),lim=ROOM_R-1;if(dr>lim){des.x*=lim/dr;des.z*=lim/dr}
+  }else{
+    const s=stations[seatI],brewing=mode==='brew'||mode==='served'||mode==='drink';
+    const e=brewing?new V3(0,1.86,7.8):new V3(0,1.9,8.3);
+    const lp=Math.cos(cam.sp),v=new V3(Math.sin(cam.sy)*lp,Math.sin(cam.sp),-Math.cos(cam.sy)*lp);
+    des.copy(s.g.localToWorld(e.clone()));look.copy(s.g.localToWorld(e.clone().add(v.multiplyScalar(4))));
+  }
+  const k=reduced?1:1-Math.exp(-dt*cam.rate*2);
+  cam.pos.lerp(des,k);cam.look.lerp(look,k);camera.position.copy(cam.pos);camera.lookAt(cam.look);
+  const fovGoal=camera.aspect<1?Math.min(80,cam.fovT*(1+(1-camera.aspect)*.8)):cam.fovT;
+  if(Math.abs(camera.fov-fovGoal)>.05){camera.fov=lerp(camera.fov,fovGoal,1-Math.exp(-dt*2));camera.updateProjectionMatrix()}
+}
+function frame(){
+  const dt=Math.min(clock.getDelta(),.05);elapsed+=dt;
+  if(!reduced)windU.value=elapsed*(raining?1.6:1);
+  if(mode==='walk')updateWalk(dt);
+  if(mode==='brew')runBrew(dt);
+  if(mode==='served'||mode==='drink'){const s=stations[seatI];const w=new V3();steamPuff(.26,BAR_H+.13,6.95,dt,1)}
+  if(mode==='drink'){
+    drink+=dt/3.2;const s=stations[seatI],k=Math.sin(clamp(drink)*Math.PI);
+    s.cup.position.set(lerp(.26,.02,k),BAR_H+k*.5,lerp(6.95,7.5,k));s.cup.rotation.x=-k*.42;
+    if(drink>=1){s.cup.position.set(.26,BAR_H,6.95);s.cup.rotation.x=0;steam.forEach(q=>q.visible=false);openTaste()}
+  }
+  if(mode!=='brew')barSpot.intensity=lerp(barSpot.intensity,mode==='seated'||mode==='served'||mode==='drink'||mode==='taste'?9:0,dt);
+  stations.forEach((s,i)=>{
+    if(i===seatI&&mode==='brew')return;
+    const t=elapsed*.8+s.phase;s.p.g.position.y=Math.sin(t)*.006;s.p.headG.rotation.y=Math.sin(t*.4)*.2;
+    if(i===seatI)s.p.headG.rotation.x=lerp(s.p.headG.rotation.x,-.04,dt*2);else s.p.headG.rotation.x=.14+Math.sin(t*.3)*.08;
+  });
+  peers.forEach(e=>{
+    const pos=e.o.g.position;if(e.seat>=0){const w=seatWorld(e.seat);pos.lerp(w.setY(.62),Math.min(1,dt*5));e.o.g.rotation.y=stations[e.seat].g.rotation.y+Math.PI}
+    else{const dx=e.x-pos.x,dz=e.z-pos.z,moved=Math.hypot(dx,dz)>.05;pos.x+=dx*Math.min(1,dt*6);pos.z+=dz*Math.min(1,dt*6);pos.y=0;e.o.g.rotation.y=e.ry;const sw=moved?Math.sin(elapsed*9):0;e.o.legL.rotation.x=sw*.5;e.o.legR.rotation.x=-sw*.5}
+  });
+  if(raining){const a=rain.geometry.attributes.position;for(let i=0;i<rainN;i++){const o=i*6,v=rainVel[i]*dt;let y=rainPos[o+1]-v;if(y<.3)y=16;rainPos[o+1]=y;rainPos[o+4]=y+.45}a.needsUpdate=true}
+  if(!reduced)fall.forEach(l=>{const u=l.userData;u.y-=dt*u.s;if(u.y<.02)u.y=7+Math.random()*1.5;u.a+=dt*.08;l.position.set(Math.sin(u.a)*u.r+Math.sin(elapsed+u.p)*.3,u.y,Math.cos(u.a)*u.r);l.rotation.set(elapsed+u.p,u.p,elapsed*.7)});
+  updateCamera(dt);
+  renderer.render(scene,camera);
+}
+renderer.setAnimationLoop(frame);
+document.addEventListener('visibilitychange',()=>{
+  renderer.setAnimationLoop(document.hidden?null:frame);clock.getDelta();
+  if(S.bg)return;
+  if(document.hidden){if(Au.ctx)Au.ctx.suspend();song.pause()}else{if(Au.ctx)Au.ctx.resume();playMusic()}
+});
+})();
+</script>
